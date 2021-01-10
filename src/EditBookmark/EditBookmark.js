@@ -1,31 +1,54 @@
 import React, { Component } from 'react';
 import BookmarksContext from '../BookmarksContext';
 import config from '../config';
-import './AddBookmark.css';
+import './EditBookmark.css';
 
-const Required = () => <span className="AddBookmark__required">*</span>;
+const Required = () => <span className="EditBookmark__required">*</span>;
 
-class AddBookmark extends Component {
+class EditBookmark extends Component {
   static contextType = BookmarksContext;
 
   state = {
     error: null,
   };
 
+  componentDidMount() {
+    const bookmarkId = this.props.match.params.id;
+    fetch(`${config.API_ENDPOINT}/${bookmarkId}`, {
+      method: 'GET',
+      headers: {
+        'content-type': 'application/json',
+        Authorization: `Bearer ${config.API_KEY}`,
+      },
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        this.setState({
+          id: data.id,
+          title: data.title,
+          description: data.description,
+          url: data.url,
+          rating: data.rating,
+        });
+      })
+      .catch((error) => this.setState({ error }));
+  }
+
   handleSubmit = (e) => {
     e.preventDefault();
     // get the form fields from the event
-    const { title, url, description, rating } = e.target;
-    const bookmark = {
-      title: title.value,
-      url: url.value,
-      description: description.value,
-      rating: rating.value,
+    const { id, title, url, description, rating } = this.state;
+    const updatedBookmark = {
+      id,
+      title,
+      url,
+      description,
+      rating,
     };
     this.setState({ error: null });
-    fetch(config.API_ENDPOINT, {
-      method: 'POST',
-      body: JSON.stringify(bookmark),
+    fetch(`${config.API_ENDPOINT}/${this.props.match.params.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updatedBookmark),
       headers: {
         'content-type': 'application/json',
         authorization: `bearer ${config.API_KEY}`,
@@ -39,19 +62,24 @@ class AddBookmark extends Component {
             throw error;
           });
         }
-        return res.json();
       })
       .then((data) => {
-        title.value = '';
-        url.value = '';
-        description.value = '';
-        rating.value = '';
         this.props.history.push('/');
-        this.context.addBookmark(data);
+        this.context.updateBookmark(updatedBookmark);
       })
       .catch((error) => {
+        console.log(error);
         this.setState({ error });
       });
+  };
+
+  handleChange = (event) => {
+    const targetField = event.target.id;
+    const targetValue = event.target.value;
+
+    this.setState({
+      [targetField]: targetValue,
+    });
   };
 
   handleClickCancel = () => {
@@ -61,10 +89,10 @@ class AddBookmark extends Component {
   render() {
     const { error } = this.state;
     return (
-      <section className="AddBookmark">
-        <h2>Create a bookmark</h2>
-        <form className="AddBookmark__form" onSubmit={this.handleSubmit}>
-          <div className="AddBookmark__error" role="alert">
+      <section className="EditBookmark">
+        <h2>Edit bookmark</h2>
+        <form className="EditBookmark__form" onSubmit={this.handleSubmit}>
+          <div className="EditBookmark__error" role="alert">
             {error && <p>{error.message}</p>}
           </div>
           <div>
@@ -75,6 +103,8 @@ class AddBookmark extends Component {
               type="text"
               name="title"
               id="title"
+              value={this.state.title}
+              onChange={this.handleChange}
               placeholder="Great website!"
               required
             />
@@ -87,13 +117,20 @@ class AddBookmark extends Component {
               type="url"
               name="url"
               id="url"
+              value={this.state.url}
+              onChange={this.handleChange}
               placeholder="https://www.great-website.com/"
               required
             />
           </div>
           <div>
             <label htmlFor="description">Description</label>
-            <textarea name="description" id="description" />
+            <textarea
+              name="description"
+              id="description"
+              value={this.state.description}
+              onChange={this.handleChange}
+            />
           </div>
           <div>
             <label htmlFor="rating">
@@ -103,13 +140,14 @@ class AddBookmark extends Component {
               type="number"
               name="rating"
               id="rating"
-              defaultValue="1"
+              value={this.state.rating}
+              onChange={this.handleChange}
               min="1"
               max="5"
               required
             />
           </div>
-          <div className="AddBookmark__buttons">
+          <div className="EditBookmark__buttons">
             <button type="button" onClick={this.handleClickCancel}>
               Cancel
             </button>{' '}
@@ -121,4 +159,4 @@ class AddBookmark extends Component {
   }
 }
 
-export default AddBookmark;
+export default EditBookmark;
